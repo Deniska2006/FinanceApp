@@ -1,43 +1,94 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"math/rand"
+	"log"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
-const (
-	totalPoints       = 100
-	pointsPerQuestion = 20
-)
+func Id() string {
+	file, err := os.Open("finance.txt")
+	if err != nil {
+		log.Print("Помилка відкриття файлу:", err)
+		return "1"
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var lastLine string
+
+	for scanner.Scan() {
+		lastLine = scanner.Text()
+	}
+
+	if lastLine == "" {
+		return "1"
+	}
+
+	parts := strings.Split(lastLine, " ")
+	if len(parts) == 0 {
+		return "1"
+	}
+
+	id, err := strconv.Atoi(parts[0])
+	if err != nil {
+		log.Printf("Не коректний id у файлі: %v", err)
+		return "error"
+	}
+
+	id++
+	return strconv.Itoa(id)
+}
+
+func InsertData(data string) {
+
+	file, err := os.OpenFile("finance.txt", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		log.Print("Помилка відкриття файлу:", err)
+		return
+	}
+
+	defer file.Close()
+
+	id := Id()
+
+	date := time.Now()
+
+	data = strings.ReplaceAll(data, " ", " \t")
+
+	_, err = file.WriteString(id + " " + data + "\t" + date.Format("2006-01-02 15:04:05") + "\n")
+	if err != nil {
+		log.Print("Помилка запису у файл:", err)
+		return
+	}
+
+}
 
 func main() {
-	fmt.Println("Вітаємо у грі MathCore!")
+	var action uint8 = 10
 
-	for i := 5; i > 0; i-- {
-		fmt.Printf("До початку: %v c\n", i)
-		time.Sleep(1 * time.Second)
-	}
+	fmt.Println("0 - вихід, 1 - записати фін. опр.,2 - delete")
 
-	myPoints := 0
-	for myPoints < totalPoints {
-		x, y := rand.Intn(100), rand.Intn(100)
-		fmt.Printf("%v + %v = ", x, y)
+	scanner := bufio.NewScanner(os.Stdin)
+	for action != 0 {
+		fmt.Scan(&action)
+		switch action {
 
-		ans := ""
-		fmt.Scan(&ans)
+		case 1:
+			fmt.Scanln()
+			scanner.Scan()
+			data := scanner.Text()
 
-		ansInt, err := strconv.Atoi(ans)
-		if err != nil {
-			fmt.Println("Спробуй ще!")
-		} else {
-			if ansInt == x+y {
-				myPoints += pointsPerQuestion
-				fmt.Printf("Правильно! У Вас %v очок!\n", myPoints)
-			} else {
-				fmt.Println("НЕ ПРАВИЛЬНО!")
-			}
+			InsertData(data)
+		case 2:
+			os.Truncate("finance.txt", 0)
+
 		}
+
 	}
+
 }
