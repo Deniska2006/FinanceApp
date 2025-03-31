@@ -10,45 +10,14 @@ import (
 	"strconv"
 	"time"
 
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+
+	"fyne.io/fyne/v2/widget"
 	"github.com/upper/db/v4"
 	"github.com/upper/db/v4/adapter/postgresql"
 )
-
-// func Id() int {
-// 	file, err := os.Open("finance.txt")
-// 	if err != nil {
-// 		log.Print("Помилка відкриття файлу:", err)
-// 		return 0
-// 	}
-// 	defer file.Close()
-
-// 	scanner := bufio.NewScanner(file)
-// 	var lastLine string
-
-// 	for scanner.Scan() {
-// 		lastLine = scanner.Text()
-// 	}
-
-// 	if lastLine == "" {
-// 		return 1
-// 	}
-
-// 	idS := ""
-// 	for _, v := range lastLine {
-// 		if string(v) == " " || string(v) == "\t" {
-// 			break
-// 		}
-// 		idS += string(v)
-// 	}
-// 	id, err := strconv.Atoi(idS)
-// 	if err != nil {
-// 		log.Printf("Не коректний id у файлі: %v", err)
-// 		return -1
-// 	}
-
-// 	id++
-// 	return id
-// }
 
 func Price(data string) int {
 	price := -1
@@ -78,22 +47,14 @@ func Name(data string) string {
 	}
 	return name
 }
-func InsertData(sess db.Session, data string) {
-
-	// file, err := os.OpenFile("finance.txt", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
-	// if err != nil {
-	// 	log.Print("Помилка відкриття файлу:", err)
-	// 	return
-	// }
-
-	// defer file.Close()
-
+func InsertData(sess db.Session, data string) bool {
 	var lastID sql.NullInt64
 	row, _ := sess.SQL().QueryRow("SELECT MAX(id) FROM costs")
 	err := row.Scan(&lastID)
 
 	if err != nil && err != sql.ErrNoRows {
 		log.Fatal("Помилка виконання SQL:", err)
+		return false
 	}
 
 	id := 1
@@ -103,6 +64,9 @@ func InsertData(sess db.Session, data string) {
 
 	name := Name(data)
 	price := Price(data)
+	if price == -1 {
+		return false
+	}
 
 	date := time.Now()
 
@@ -116,14 +80,9 @@ func InsertData(sess db.Session, data string) {
 	_, err = collection.Insert(&product)
 	if err != nil {
 		log.Fatal("Error inserting data: ", err)
+		return false
 	}
-
-	// _, err = file.WriteString(strconv.Itoa(id) + "\t" + name + "\t" + strconv.Itoa(price) + "\t" + date.Format("2006-01-02 15:04:05") + "\n")
-	// if err != nil {
-	// 	log.Print("Помилка запису у файл:", err)
-	// 	return
-	// }
-
+	return true
 }
 
 func main() {
@@ -143,28 +102,42 @@ func main() {
 		fmt.Println("Tables being create")
 	}
 
-	InsertData(sess, "cock 300")
+	// InsertData(sess, "data")
 
-	// var action uint8 = 10
+	a := app.New()
+	w := a.NewWindow("Вікно")
+	w.Resize(fyne.NewSize(400, 320))
 
-	// fmt.Println("0 - вихід, 1 - записати фін. опр.,2 - delete")
+	label1 := widget.NewLabel("Вітаємо у фінаносвому трекері")
+	entry1 := widget.NewEntry()
+	label2 := widget.NewLabel("")
 
-	// scanner := bufio.NewScanner(os.Stdin)
-	// for action != 0 {
-	// 	fmt.Scan(&action)
-	// 	switch action {
+	data := ""
+	isOk := false
+	btn1 := widget.NewButton("Записати", func() {
+		data = entry1.Text
+		isOk = InsertData(sess, data)
+		if isOk {
+			label2.SetText("Дані записані")
+		} else {
+			label2.SetText("Помилка запису даних")
+		}
+		entry1.SetText("")
 
-	// 	case 1:
-	// 		fmt.Scanln()
-	// 		scanner.Scan()
-	// 		data := scanner.Text()
+	})
 
-	// 		InsertData(sess, data)
-	// 	case 2:
-	// 		os.Truncate("finance.txt", 0)
+	btn2 := widget.NewButton("Quit", func() {
+		a.Quit()
+	})
 
-	// 	}
+	w.SetContent(container.NewVBox(
+		label1,
 
-	// }
+		entry1,
+		btn1,
+		btn2,
+		label2,
+	))
+	w.ShowAndRun()
 
 }
