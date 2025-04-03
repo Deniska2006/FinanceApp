@@ -21,6 +21,10 @@ import (
 )
 
 func InsertData(sess db.Session, name string, price string) bool {
+	if name == "" {
+		return false
+	}
+
 	var lastID sql.NullInt64
 	row, _ := sess.SQL().QueryRow("SELECT MAX(id) FROM costs")
 	err := row.Scan(&lastID)
@@ -83,22 +87,26 @@ func main() {
 	labelС := widget.NewLabel("Впишіть назву витрати")
 	labelM := widget.NewLabel("Скільки ви витратили")
 	label1 := widget.NewLabel("Вітаємо у фінаносвому трекері")
+	label1.Alignment = fyne.TextAlignCenter
 	entryM := widget.NewEntry()
-	entryC := widget.NewEntry()
+
 	label2 := widget.NewLabel("")
+
+	options := []string{"Спорт", "Їжа", "Розваги", "Тварини"}
+
+	dropdown := widget.NewSelect(options, func(selected string) {})
+	dropdown.PlaceHolder = "Оберіть категорію"
 
 	isOk := false
 	btn1 := widget.NewButton("Записати", func() {
-
-		isOk = InsertData(sess, entryC.Text, entryM.Text)
+		isOk = InsertData(sess, dropdown.Selected, entryM.Text)
 		if isOk {
 			label2.SetText("Дані записані")
 		} else {
 			label2.SetText("Помилка запису даних")
 		}
-		entryC.SetText("")
 		entryM.SetText("")
-
+		dropdown.ClearSelected()
 	})
 
 	btn2 := widget.NewButton("Quit", func() {
@@ -108,7 +116,7 @@ func main() {
 	w.SetContent(container.NewVBox(
 		label1,
 		labelС,
-		entryC,
+		dropdown,
 		labelM,
 		entryM,
 		btn1,
