@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math"
 	"prj-test/config"
 	"prj-test/dbm"
 	"prj-test/domain"
@@ -19,35 +20,7 @@ import (
 	"github.com/upper/db/v4/adapter/postgresql"
 )
 
-func Price(data string) int {
-	price := -1
-	for i, v := range data {
-		if string(v) == " " {
-			var err error
-			price, err = strconv.Atoi(data[i+1:])
-			if err != nil {
-				fmt.Println("Помилка конвертації")
-				return -1
-			}
-			return price
-
-		}
-	}
-	return price
-}
-
-func Name(data string) string {
-	name := ""
-	for _, v := range data {
-		if string(v) == " " {
-			break
-		}
-		name += string(v)
-
-	}
-	return name
-}
-func InsertData(sess db.Session, data string) bool {
+func InsertData(sess db.Session, name string, price string) bool {
 	var lastID sql.NullInt64
 	row, _ := sess.SQL().QueryRow("SELECT MAX(id) FROM costs")
 	err := row.Scan(&lastID)
@@ -62,9 +35,10 @@ func InsertData(sess db.Session, data string) bool {
 		id = int(lastID.Int64) + 1
 	}
 
-	name := Name(data)
-	price := Price(data)
-	if price == -1 {
+	price1, err := strconv.ParseFloat(price, 32)
+	price1 = math.Round(price1*100) / 100
+
+	if err != nil {
 		return false
 	}
 
@@ -73,7 +47,7 @@ func InsertData(sess db.Session, data string) bool {
 	product := domain.Cost{
 		ID:          id,
 		Name:        name,
-		Price:       price,
+		Price:       price1,
 		CreatedTime: date.Format("2006-01-02 15:04:05"),
 	}
 	collection := sess.Collection("costs")
@@ -102,27 +76,28 @@ func main() {
 		fmt.Println("Tables being create")
 	}
 
-	// InsertData(sess, "data")
-
 	a := app.New()
 	w := a.NewWindow("Вікно")
 	w.Resize(fyne.NewSize(400, 320))
 
+	labelС := widget.NewLabel("Впишіть назву витрати")
+	labelM := widget.NewLabel("Скільки ви витратили")
 	label1 := widget.NewLabel("Вітаємо у фінаносвому трекері")
-	entry1 := widget.NewEntry()
+	entryM := widget.NewEntry()
+	entryC := widget.NewEntry()
 	label2 := widget.NewLabel("")
 
-	data := ""
 	isOk := false
 	btn1 := widget.NewButton("Записати", func() {
-		data = entry1.Text
-		isOk = InsertData(sess, data)
+
+		isOk = InsertData(sess, entryC.Text, entryM.Text)
 		if isOk {
 			label2.SetText("Дані записані")
 		} else {
 			label2.SetText("Помилка запису даних")
 		}
-		entry1.SetText("")
+		entryC.SetText("")
+		entryM.SetText("")
 
 	})
 
@@ -132,8 +107,10 @@ func main() {
 
 	w.SetContent(container.NewVBox(
 		label1,
-
-		entry1,
+		labelС,
+		entryC,
+		labelM,
+		entryM,
 		btn1,
 		btn2,
 		label2,
