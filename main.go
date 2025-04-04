@@ -20,6 +20,31 @@ import (
 	"github.com/upper/db/v4/adapter/postgresql"
 )
 
+func GetData(sess db.Session) string {
+	var sportPrices, foodPrices, entertainmentPrices, animalPrices float64
+
+	var costs []domain.Data
+	err := sess.Collection("costs").Find().All(&costs)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, cost := range costs {
+		switch cost.Name {
+		case "Спорт":
+			sportPrices += cost.Price
+		case "Їжа":
+			foodPrices += cost.Price
+		case "Розваги":
+			entertainmentPrices += cost.Price
+		case "Тварини":
+			animalPrices += cost.Price
+		}
+	}
+
+	return fmt.Sprintf("Ви витратили:\nНа спорт - %f\nНа  їжу - %f\nНа розваги - %f\nНа тварин - %f", sportPrices, foodPrices, entertainmentPrices, animalPrices)
+}
+
 func InsertData(sess db.Session, name string, price string) bool {
 	if name == "" {
 		return false
@@ -81,12 +106,14 @@ func main() {
 	}
 
 	a := app.New()
-	w := a.NewWindow("Вікно")
+	w := a.NewWindow("FinanceTraker")
 	w.Resize(fyne.NewSize(400, 320))
 
 	labelС := widget.NewLabel("Впишіть назву витрати")
 	labelM := widget.NewLabel("Скільки ви витратили")
 	label1 := widget.NewLabel("Вітаємо у фінаносвому трекері")
+	labelData := widget.NewLabel("")
+	labelData.Hide()
 	label1.Alignment = fyne.TextAlignCenter
 	entryM := widget.NewEntry()
 
@@ -97,6 +124,7 @@ func main() {
 	dropdown := widget.NewSelect(options, func(selected string) {})
 	dropdown.PlaceHolder = "Оберіть категорію"
 
+	isHide := true
 	isOk := false
 	btn1 := widget.NewButton("Записати", func() {
 		isOk = InsertData(sess, dropdown.Selected, entryM.Text)
@@ -112,6 +140,30 @@ func main() {
 	btn2 := widget.NewButton("Quit", func() {
 		a.Quit()
 	})
+	var btn4, btn3 *widget.Button
+	updateButtons := func() {
+		if isHide {
+			btn4.Hide()
+			labelData.Hide()
+
+		} else {
+			btn4.Show()
+			labelData.Show()
+
+		}
+	}
+	btn4 = widget.NewButton("Сховати", func() {
+		w.Resize(fyne.NewSize(400, 320))
+		isHide = true
+		updateButtons()
+	})
+	btn3 = widget.NewButton("Показати дані", func() {
+		w.Resize(fyne.NewSize(400, 500))
+		isHide = false
+		updateButtons()
+		labelData.SetText(GetData(sess))
+	})
+	updateButtons()
 
 	w.SetContent(container.NewVBox(
 		label1,
@@ -120,8 +172,11 @@ func main() {
 		labelM,
 		entryM,
 		btn1,
+		btn3,
 		btn2,
+		btn4,
 		label2,
+		labelData,
 	))
 	w.ShowAndRun()
 
