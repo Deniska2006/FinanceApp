@@ -40,7 +40,7 @@ func GetData(sess db.Session) string {
 		result += fmt.Sprintf("На %s - %.2fгрн(%.2f%%)\n ", i, v, (100*v)/all)
 
 	}
-	result += fmt.Sprintf("Всього - %fгрн\n", all)
+	result += fmt.Sprintf("Всього - %.2fгрн\n", all)
 	return result
 }
 
@@ -60,6 +60,14 @@ func GetCategories(sess db.Session) []string {
 	}
 	return categoryNames
 
+}
+
+func AddCategory(sess db.Session, c string) {
+	category := domain.Category{Name: c}
+	err := sess.Collection("categories").InsertReturning(&category)
+	if err != nil {
+		log.Fatal("Insert error:", err)
+	}
 }
 
 func InsertData(sess db.Session, name string, price string) bool {
@@ -136,19 +144,16 @@ func main() {
 	labelС := widget.NewLabel("Впишіть назву витрати")
 	labelM := widget.NewLabel("Скільки ви витратили")
 	label1 := widget.NewLabel("Вітаємо у фінаносвому трекері")
+	entryAdd := widget.NewEntry()
+	entryAdd.PlaceHolder = "Впишіть категорію"
 	labelData := widget.NewLabel("")
-	labelData.Hide()
 	label1.Alignment = fyne.TextAlignCenter
 	entryM := widget.NewEntry()
-
 	label2 := widget.NewLabel("")
 
-	options := GetCategories(sess)
-
-	dropdown := widget.NewSelect(options, func(selected string) {})
+	dropdown := widget.NewSelect(GetCategories(sess), func(selected string) {})
 	dropdown.PlaceHolder = "Оберіть категорію"
 
-	isHide := true
 	isOk := false
 	btn1 := widget.NewButton("Записати", func() {
 		isOk = InsertData(sess, dropdown.Selected, entryM.Text)
@@ -164,33 +169,61 @@ func main() {
 	btn2 := widget.NewButton("Вийти", func() {
 		a.Quit()
 	})
-	var btn4, btn3 *widget.Button
-	updateButtons := func() {
-		if isHide {
-			w.Resize(fyne.NewSize(400, 400))
-			btn4.Hide()
-			labelData.Hide()
+	var btn4, btn3, btn5, btnAdd *widget.Button
 
-		} else {
-			w.Resize(fyne.NewSize(400, 500))
-			btn4.Show()
-			labelData.Show()
-
-		}
-	}
 	btn4 = widget.NewButton("Сховати", func() {
 		label2.SetText("")
-		isHide = true
-		updateButtons()
+		btn4.Hide()
+		labelData.Hide()
 	})
 	btn3 = widget.NewButton("Показати дані", func() {
 		label2.SetText("")
-		isHide = false
-		updateButtons()
+		btn4.Show()
+		labelData.Show()
 		labelData.SetText(GetData(sess))
 	})
-	updateButtons()
+	btn5 = widget.NewButton("Додати категорію", func() {
+		label1.Hide()
+		labelС.Hide()
+		dropdown.Hide()
+		labelM.Hide()
+		entryM.Hide()
+		btn1.Hide()
+		btn3.Hide()
+		btn5.Hide()
+		label2.Hide()
+		labelData.Hide()
+		btn4.Hide()
+		entryAdd.Show()
+		btnAdd.Show()
 
+	})
+	btnAdd = widget.NewButton("Додати", func() {
+		if entryAdd.Text != "" {
+			AddCategory(sess, entryAdd.Text)
+		}
+		labelС.Show()
+		dropdown.Show()
+		labelM.Show()
+		entryM.Show()
+		btn1.Show()
+		btn3.Show()
+		btn5.Show()
+		label1.Show()
+		label2.Show()
+		entryAdd.Hide()
+		btnAdd.Hide()
+		entryAdd.SetText("")
+		entryAdd.PlaceHolder = "Впишіть категорію"
+		newCategories := GetCategories(sess)
+		dropdown.Options = newCategories
+		dropdown.Refresh()
+
+	})
+	entryAdd.Hide()
+	labelData.Hide()
+	btnAdd.Hide()
+	btn4.Hide()
 	w.SetContent(container.NewVBox(
 		label1,
 		labelС,
@@ -199,6 +232,9 @@ func main() {
 		entryM,
 		btn1,
 		btn3,
+		btn5,
+		entryAdd,
+		btnAdd,
 		btn2,
 		label2,
 		labelData,
