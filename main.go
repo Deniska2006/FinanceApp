@@ -21,7 +21,7 @@ import (
 )
 
 func GetData(sess db.Session) string {
-	var sportPrices, foodPrices, entertainmentPrices, animalPrices float64
+	var sportPrices, foodPrices, entertainmentPrices, animalPrices, all float64
 
 	var costs []domain.Data
 	err := sess.Collection("costs").Find().All(&costs)
@@ -30,6 +30,7 @@ func GetData(sess db.Session) string {
 	}
 
 	for _, cost := range costs {
+		all += cost.Price
 		switch cost.Name {
 		case "Спорт":
 			sportPrices += cost.Price
@@ -42,7 +43,25 @@ func GetData(sess db.Session) string {
 		}
 	}
 
-	return fmt.Sprintf("Ви витратили:\nНа спорт - %f\nНа  їжу - %f\nНа розваги - %f\nНа тварин - %f", sportPrices, foodPrices, entertainmentPrices, animalPrices)
+	return fmt.Sprintf("Ви витратили:\nНа спорт - %.2fгрн, %.2f%%\nНа  їжу - %.2fгрн, %.2f%%\nНа розваги - %.2fгрн, %.2f%%\nНа тварин - %.2fгрн, %.2f%%\nВсього - %.2f", sportPrices, (100*sportPrices)/all, foodPrices, (100*foodPrices)/all, entertainmentPrices, (100*entertainmentPrices)/all, animalPrices, (100*animalPrices)/all, all)
+}
+
+func GetCategories(sess db.Session) []string {
+	var categories []map[string]interface{}
+	err := sess.Collection("categories").Find().All(&categories)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var categoryNames []string
+	for _, category := range categories {
+
+		if name, ok := category["name"].(string); ok {
+			categoryNames = append(categoryNames, name)
+		}
+	}
+	return categoryNames
+
 }
 
 func InsertData(sess db.Session, name string, price string) bool {
@@ -105,9 +124,16 @@ func main() {
 		fmt.Println("Tables being create")
 	}
 
+	err = dbm.ExecuteSQLFile(sess, "dbm\\categories.sql")
+	if err != nil {
+		log.Fatal("Помилка при виконанні SQL-файлу:", err)
+	} else {
+		fmt.Println("Tables being create2")
+	}
+
 	a := app.New()
 	w := a.NewWindow("FinanceTraker")
-	w.Resize(fyne.NewSize(400, 320))
+	w.Resize(fyne.NewSize(400, 400))
 
 	labelС := widget.NewLabel("Впишіть назву витрати")
 	labelM := widget.NewLabel("Скільки ви витратили")
@@ -119,7 +145,7 @@ func main() {
 
 	label2 := widget.NewLabel("")
 
-	options := []string{"Спорт", "Їжа", "Розваги", "Тварини"}
+	options := GetCategories(sess)
 
 	dropdown := widget.NewSelect(options, func(selected string) {})
 	dropdown.PlaceHolder = "Оберіть категорію"
@@ -137,28 +163,30 @@ func main() {
 		dropdown.ClearSelected()
 	})
 
-	btn2 := widget.NewButton("Quit", func() {
+	btn2 := widget.NewButton("Вийти", func() {
 		a.Quit()
 	})
 	var btn4, btn3 *widget.Button
 	updateButtons := func() {
 		if isHide {
+			w.Resize(fyne.NewSize(400, 400))
 			btn4.Hide()
 			labelData.Hide()
 
 		} else {
+			w.Resize(fyne.NewSize(400, 500))
 			btn4.Show()
 			labelData.Show()
 
 		}
 	}
 	btn4 = widget.NewButton("Сховати", func() {
-		w.Resize(fyne.NewSize(400, 320))
+		label2.SetText("")
 		isHide = true
 		updateButtons()
 	})
 	btn3 = widget.NewButton("Показати дані", func() {
-		w.Resize(fyne.NewSize(400, 500))
+		label2.SetText("")
 		isHide = false
 		updateButtons()
 		labelData.SetText(GetData(sess))
@@ -174,9 +202,9 @@ func main() {
 		btn1,
 		btn3,
 		btn2,
-		btn4,
 		label2,
 		labelData,
+		btn4,
 	))
 	w.ShowAndRun()
 
