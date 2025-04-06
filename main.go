@@ -21,29 +21,27 @@ import (
 )
 
 func GetData(sess db.Session) string {
-	var sportPrices, foodPrices, entertainmentPrices, animalPrices, all float64
-
+	var all float64
 	var costs []domain.Data
 	err := sess.Collection("costs").Find().All(&costs)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	m := make(map[string]float64)
+
 	for _, cost := range costs {
 		all += cost.Price
-		switch cost.Name {
-		case "Спорт":
-			sportPrices += cost.Price
-		case "Їжа":
-			foodPrices += cost.Price
-		case "Розваги":
-			entertainmentPrices += cost.Price
-		case "Тварини":
-			animalPrices += cost.Price
-		}
-	}
+		m[cost.Name] += cost.Price
 
-	return fmt.Sprintf("Ви витратили:\nНа спорт - %.2fгрн, %.2f%%\nНа  їжу - %.2fгрн, %.2f%%\nНа розваги - %.2fгрн, %.2f%%\nНа тварин - %.2fгрн, %.2f%%\nВсього - %.2f", sportPrices, (100*sportPrices)/all, foodPrices, (100*foodPrices)/all, entertainmentPrices, (100*entertainmentPrices)/all, animalPrices, (100*animalPrices)/all, all)
+	}
+	result := "Ви витратили:\n"
+	for i, v := range m {
+		result += fmt.Sprintf("На %s - %.2fгрн(%.2f%%)\n ", i, v, (100*v)/all)
+
+	}
+	result += fmt.Sprintf("Всього - %fгрн\n", all)
+	return result
 }
 
 func GetCategories(sess db.Session) []string {
