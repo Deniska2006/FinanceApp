@@ -1,10 +1,12 @@
-module prj-test
+
+module something
 
 go 1.23.3
 
 require (
 	fyne.io/fyne/v2 v2.5.5
 	github.com/upper/db/v4 v4.10.0
+
 )
 
 require (
