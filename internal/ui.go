@@ -12,10 +12,93 @@ import (
 	"github.com/upper/db/v4"
 )
 
-func Ui(sess db.Session) {
+func AppMain(sess db.Session) {
 	a := app.New()
-	w := a.NewWindow("FinanceTraker")
-	w.Resize(fyne.NewSize(400, 400))
+	w := a.NewWindow("finTracker")
+	w.Resize(fyne.NewSize(400, 300))
+
+	showLogin(w, sess, a)
+
+	w.ShowAndRun()
+}
+
+func showLogin(w fyne.Window, sess db.Session, a fyne.App) {
+	mail := widget.NewEntry()
+	password := widget.NewPasswordEntry()
+	label := widget.NewLabel("Вхід у систему")
+
+	loginButton := widget.NewButton("Увійти", func() {
+		stratus, id := LogCheck(sess, mail.Text, password.Text)
+		if stratus {
+			Ui(w, sess, a, id)
+		} else {
+			label.SetText("Невірний логін або пароль")
+			mail.SetText("")
+			password.SetText("")
+		}
+	})
+
+	registerButton := widget.NewButton("Реєстрація", func() {
+
+		showRegister(w, sess, a)
+	})
+
+	quitButton := widget.NewButton("Вийти", func() {
+		a.Quit()
+	})
+
+	w.SetContent(container.NewVBox(
+		label,
+		mail,
+		password,
+		loginButton,
+		registerButton,
+		quitButton,
+	))
+}
+
+func showRegister(w fyne.Window, sess db.Session, a fyne.App) {
+	newUser := widget.NewEntry()
+	newPass := widget.NewPasswordEntry()
+	confirm := widget.NewPasswordEntry()
+	label := widget.NewLabel("Реєстрація")
+
+	register := widget.NewButton("Зареєструватися", func() {
+		if newPass.Text == confirm.Text {
+			status, text := Register(sess, newUser.Text, newPass.Text)
+			if !status {
+				label.SetText(text)
+			} else {
+				showLogin(w, sess, a)
+			}
+		} else {
+			w.SetContent(container.NewVBox(
+				widget.NewLabel("Паролі не збігаються"),
+				newUser, newPass, confirm,
+				widget.NewButton("Зареєструватися", nil),
+			))
+		}
+	})
+
+	back := widget.NewButton("Назад", func() {
+		showLogin(w, sess, a)
+	})
+	quitButton := widget.NewButton("Вийти", func() {
+		a.Quit()
+	})
+
+	w.SetContent(container.NewVBox(
+		label,
+		newUser,
+		newPass,
+		confirm,
+		register,
+		back,
+		quitButton,
+	))
+}
+
+func Ui(w fyne.Window, sess db.Session, a fyne.App, uid int64) {
 
 	labelС := widget.NewLabel("Впишіть назву витрати")
 	labelM := widget.NewLabel("Скільки ви витратили")
@@ -27,12 +110,12 @@ func Ui(sess db.Session) {
 	entryM := widget.NewEntry()
 	label2 := widget.NewLabel("")
 
-	dropdown := widget.NewSelect(GetCategories(sess), func(selected string) {})
+	dropdown := widget.NewSelect(GetCategories(sess, uid), func(selected string) {})
 	dropdown.PlaceHolder = "Оберіть категорію"
 
 	isOk := false
 	btn1 := widget.NewButton("Записати", func() {
-		isOk = InsertData(sess, dropdown.Selected, entryM.Text)
+		isOk = InsertData(sess, dropdown.Selected, entryM.Text, uid)
 		if isOk {
 			label2.SetText("Дані записані")
 		} else {
@@ -60,7 +143,7 @@ func Ui(sess db.Session) {
 		label2.SetText("")
 		btn4.Show()
 		labelData.Show()
-		labelData.SetText(GetData(sess))
+		labelData.SetText(GetData(sess, uid))
 	})
 	btn5 = widget.NewButton("Додати категорію", func() {
 		label1.Hide()
@@ -80,7 +163,7 @@ func Ui(sess db.Session) {
 	})
 	btnAdd = widget.NewButton("Додати", func() {
 		if entryAdd.Text != "" {
-			AddCategory(sess, entryAdd.Text)
+			AddCategory(sess, entryAdd.Text, uid)
 		}
 		labelС.Show()
 		dropdown.Show()
@@ -95,7 +178,7 @@ func Ui(sess db.Session) {
 		btnAdd.Hide()
 		entryAdd.SetText("")
 		entryAdd.PlaceHolder = "Впишіть категорію"
-		newCategories := GetCategories(sess)
+		newCategories := GetCategories(sess, uid)
 		dropdown.Options = newCategories
 		dropdown.Refresh()
 
@@ -120,5 +203,5 @@ func Ui(sess db.Session) {
 		labelData,
 		btn4,
 	))
-	w.ShowAndRun()
+
 }

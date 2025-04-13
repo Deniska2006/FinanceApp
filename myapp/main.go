@@ -17,6 +17,11 @@ func main() {
 	}
 	defer sess.Close()
 
+	err = dbm.ExecuteSQLFile(sess, "../dbm/users.sql")
+	if err != nil {
+		log.Fatal("Помилка при виконанні SQL-файлу:", err)
+	}
+
 	err = dbm.ExecuteSQLFile(sess, "../dbm/schema.sql")
 	if err != nil {
 		log.Fatal("Помилка при виконанні SQL-файлу:", err)
@@ -27,5 +32,5 @@ func main() {
 		log.Fatal("Помилка при виконанні SQL-файлу:", err)
 	}
 
-	internal.Ui(sess)
+	internal.AppMain(sess)
 }

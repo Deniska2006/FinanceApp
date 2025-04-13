@@ -10,12 +10,64 @@ import (
 	"time"
 
 	"github.com/upper/db/v4"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func GetData(sess db.Session) string {
+func LogCheck(sess db.Session, login, password string) (bool, int64) {
+	var user domain.Account
+
+	// Знайти користувача по логіну
+	err := sess.Collection("users").Find(db.Cond{"mail": login}).One(&user)
+	if err != nil {
+		log.Println("Користувача не знайдено:", err)
+		return false, 0
+	}
+
+	// Порівняти хешований пароль
+	err = bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(password))
+	if err != nil {
+		log.Println("Невірний пароль")
+		return false, 0
+	}
+
+	return true, user.Id
+}
+
+func Register(sess db.Session, mail, password string) (bool, string) {
+
+	var existingUser domain.Account
+	err := sess.Collection("users").Find(db.Cond{"mail": mail}).One(&existingUser)
+	if err == nil {
+
+		log.Println("Користувач з таким email вже існує.")
+		return false, "Користувач з таким email вже існує."
+	}
+
+	h, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Println("Помилка хешування пароля:", err)
+		return false, "Помилка хешування пароля"
+	}
+
+	user := domain.Account{
+		Mail:           mail,
+		HashedPassword: string(h),
+	}
+
+	collection := sess.Collection("users")
+	_, err = collection.Insert(&user)
+	if err != nil {
+		log.Println("Помилка вставки даних:", err)
+		return false, "Помилка вставки даних"
+	}
+
+	return true, ""
+}
+
+func GetData(sess db.Session, uid int64) string {
 	var all float64
 	var costs []domain.Data
-	err := sess.Collection("costs").Find().All(&costs)
+	err := sess.Collection("costs").Find(db.Cond{"uid": uid}).All(&costs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,33 +88,32 @@ func GetData(sess db.Session) string {
 	return result
 }
 
-func GetCategories(sess db.Session) []string {
-	var categories []map[string]interface{}
-	err := sess.Collection("categories").Find().All(&categories)
+func GetCategories(sess db.Session, uid int64) []string {
+	var categories []domain.Category
+	err := sess.Collection("categories").Find(db.Cond{"uid": uid}).All(&categories)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	var categoryNames []string
 	for _, category := range categories {
-
-		if name, ok := category["name"].(string); ok {
-			categoryNames = append(categoryNames, name)
+		if category.Uid == uid {
+			categoryNames = append(categoryNames, category.Name)
 		}
 	}
 	return categoryNames
 
 }
 
-func AddCategory(sess db.Session, c string) {
-	category := domain.Category{Name: c}
+func AddCategory(sess db.Session, c string, uid int64) {
+	category := domain.Category{Name: c, Uid: uid}
 	err := sess.Collection("categories").InsertReturning(&category)
 	if err != nil {
 		log.Fatal("Insert error:", err)
 	}
 }
 
-func InsertData(sess db.Session, name string, price string) bool {
+func InsertData(sess db.Session, name string, price string, uid int64) bool {
 	if name == "" {
 		return false
 	}
@@ -92,6 +143,7 @@ func InsertData(sess db.Session, name string, price string) bool {
 
 	product := domain.Cost{
 		ID:          id,
+		Uid:         int(uid),
 		Name:        name,
 		Price:       price1,
 		CreatedTime: date.Format("2006-01-02 15:04:05"),

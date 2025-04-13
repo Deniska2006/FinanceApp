@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS public.costs (
-    id integer PRIMARY KEY,
-    name TEXT NOT NULL,
-    price DECIMAL NOT NULL,
+    id           SERIAL PRIMARY KEY,
+    uid          INTEGER NOT NULL REFERENCES users(id),
+    name         TEXT NOT NULL,
+    price        DECIMAL NOT NULL,
     createdtime  TIMESTAMPTZ
 );
