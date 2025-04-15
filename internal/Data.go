@@ -16,14 +16,12 @@ import (
 func LogCheck(sess db.Session, login, password string) (bool, int64) {
 	var user domain.Account
 
-	// Знайти користувача по логіну
 	err := sess.Collection("users").Find(db.Cond{"mail": login}).One(&user)
 	if err != nil {
 		log.Println("Користувача не знайдено:", err)
 		return false, 0
 	}
 
-	// Порівняти хешований пароль
 	err = bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(password))
 	if err != nil {
 		log.Println("Невірний пароль")
@@ -67,6 +65,7 @@ func Register(sess db.Session, mail, password string) (bool, string) {
 func GetData(sess db.Session, uid int64) string {
 	var all float64
 	var costs []domain.Data
+	
 	err := sess.Collection("costs").Find(db.Cond{"uid": uid}).All(&costs)
 	if err != nil {
 		log.Fatal(err)

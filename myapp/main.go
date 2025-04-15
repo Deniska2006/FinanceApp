@@ -19,17 +19,17 @@ func main() {
 
 	err = dbm.ExecuteSQLFile(sess, "../dbm/users.sql")
 	if err != nil {
-		log.Fatal("Помилка при виконанні SQL-файлу:", err)
+		log.Fatal("Помилка при виконанні SQL-файлу  /dbm/users.sql : ", err)
 	}
 
 	err = dbm.ExecuteSQLFile(sess, "../dbm/schema.sql")
 	if err != nil {
-		log.Fatal("Помилка при виконанні SQL-файлу:", err)
+		log.Fatal("Помилка при виконанні SQL-файлу  /dbm/schema.sql  :", err)
 	}
 
 	err = dbm.ExecuteSQLFile(sess, "../dbm/categories.sql")
 	if err != nil {
-		log.Fatal("Помилка при виконанні SQL-файлу:", err)
+		log.Fatal("Помилка при виконанні SQL-файлу  /dbm/categories.sql :  ", err)
 	}
 
 	internal.AppMain(sess)
